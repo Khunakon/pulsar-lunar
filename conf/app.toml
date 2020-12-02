@@ -1,0 +1,5 @@
+[pulsar]
+url = "pulsar+ssl://pulsar-a-proxy.pulsar-a.svc.cluster.local:6651"
+session_event_topic = "persistent://global.gravity/chat.event.bus.v1/session_event_sent_to"
+cert_file_path = "secret/ca.crt"
+
