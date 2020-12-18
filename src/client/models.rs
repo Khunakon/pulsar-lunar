@@ -18,6 +18,7 @@ pub mod outbound {
 
     #[derive(Debug, Display, Clone, PartialEq, Ord, PartialOrd, Eq)]
     pub enum RequestKey {
+        AutoIncrRequestId,
         RequestId(u64),
         ProducerSend { producer_id: u64, sequence_id: u64 },
         Consumer { id: u64 },
@@ -95,6 +96,7 @@ pub mod general {
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
 
+    #[derive(Clone)]
     pub struct SerialId(Arc<AtomicUsize>);
 
     impl SerialId {
@@ -108,7 +110,7 @@ pub mod general {
 
     impl Default for SerialId {
         fn default() -> Self {
-            SerialId(Arc::new(AtomicUsize::new(0)))
+            SerialId(Arc::new(AtomicUsize::new(1)))
         }
     }
 

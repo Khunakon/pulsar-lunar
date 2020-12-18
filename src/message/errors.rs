@@ -1,6 +1,26 @@
 use strum_macros::Display;
 use std::error::Error;
 
+#[derive(Debug, Display)]
+pub enum SerDeError {
+   Io(std::io::Error),
+   Custom(String)
+}
+
+impl From<serde_json::error::Error> for SerDeError {
+   fn from(e: serde_json::error::Error) -> Self {
+      SerDeError::Io(std::io::Error::from(e))
+   }
+}
+
+impl From<std::io::Error> for SerDeError {
+   fn from(e: std::io::Error) -> Self {
+      SerDeError::Io(e)
+   }
+}
+
+impl Error for SerDeError {}
+
 #[derive(Display, Debug)]
 pub enum FramingError {
    EncodeErr(String),
@@ -29,6 +49,8 @@ impl From<prost::DecodeError> for FramingError {
 }
 
 use crate::message::proto::ServerError;
+use nom::lib::std::fmt::Formatter;
+use crate::message::serde::SerializeMessage;
 
 pub(crate) fn server_error(i: i32) -> Option<ServerError> {
    match i {
@@ -50,7 +72,6 @@ pub(crate) fn server_error(i: i32) -> Option<ServerError> {
       15 => Some(ServerError::TopicTerminatedError),
       16 => Some(ServerError::ProducerBusy),
       17 => Some(ServerError::InvalidTopicName),
-      // FIXME: why aren't they found by the compiler? Max enum size?
       18 => Some(ServerError::IncompatibleSchema),
       19 => Some(ServerError::ConsumerAssignError),
       20 => Some(ServerError::TransactionCoordinatorNotFound),

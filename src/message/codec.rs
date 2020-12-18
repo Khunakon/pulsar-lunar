@@ -20,7 +20,7 @@ pub struct Payload {
     pub data: Vec<u8>,
 }
 
-pub(crate) struct BatchedMessage {
+pub struct BatchedMessage {
     pub metadata: SingleMessageMetadata,
     pub payload: Vec<u8>,
 }

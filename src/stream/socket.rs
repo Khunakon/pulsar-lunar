@@ -9,19 +9,19 @@ use tokio_native_tls::TlsStream;
 use tokio_util::codec::Framed;
 
 use crate::message::codec::{Codec, Message};
-use crate::stream::{FlowHandle, PulsarProtocolFlow, InboundReceiver, OutboundSender};
-use crate::stream::config::TcpSockConfig;
+use crate::stream::{FlowHandle, PulsarStream, InboundReceiver, OutboundSender};
 use crate::stream::errors::TcpSockError;
+use std::net::SocketAddr;
 
-pub async fn tcp(config: TcpSockConfig) -> Result<TcpStream, TcpSockError> {
-    let stream = TcpStream::connect(&config.address)
+pub async fn tcp(address: SocketAddr) -> Result<TcpStream, TcpSockError> {
+    let stream = TcpStream::connect(address)
         .await
         .map_err(|e| TcpSockError::IoError(e.to_string()))?;
     Ok(stream)
 }
 
-pub async fn tls(config: TcpSockConfig, cert_chain: &[Certificate]) -> Result<TlsStream<TcpStream>, TcpSockError> {
-    let stream = TcpStream::connect(&config.address)
+pub async fn tls(address: SocketAddr, host_name: String,  cert_chain: &[Certificate]) -> Result<TlsStream<TcpStream>, TcpSockError> {
+    let stream = TcpStream::connect(address)
         .await
         .map_err( |e| TcpSockError::IoError(e.to_string()) )?;
 
@@ -36,21 +36,21 @@ pub async fn tls(config: TcpSockConfig, cert_chain: &[Certificate]) -> Result<Tl
         .map_err(|e| TcpSockError::TlsError(e.to_string()))?;
 
     let stream = TlsConnector::from(ctx)
-        .connect(&config.host_name, stream)
+        .connect(&host_name, stream)
         .await
         .map_err(|e| TcpSockError::IoError(e.to_string()))?;
 
     Ok(stream)
 }
 
-impl PulsarProtocolFlow for TlsStream<TcpStream> {
-    fn into_protocol_flow(self) -> (FlowHandle, InboundReceiver, OutboundSender) {
+impl PulsarStream for TlsStream<TcpStream> {
+    fn into_io_flow(self) -> (FlowHandle, InboundReceiver, OutboundSender) {
         into_protocol_flow(self)
     }
 }
 
-impl PulsarProtocolFlow for TcpStream {
-    fn into_protocol_flow(self) -> (FlowHandle, InboundReceiver, OutboundSender) {
+impl PulsarStream for TcpStream {
+    fn into_io_flow(self) -> (FlowHandle, InboundReceiver, OutboundSender) {
         into_protocol_flow(self)
     }
 }

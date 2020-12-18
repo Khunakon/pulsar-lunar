@@ -9,3 +9,4 @@ pub mod pulsar_proto {
 pub mod stream;
 pub mod message;
 pub mod client;
+pub mod net;

@@ -1,4 +1,4 @@
-use tokio::sync::{mpsc, oneshot, Mutex};
+use tokio::sync::{mpsc, oneshot, Mutex, watch};
 use tokio::time;
 use crate::message::codec::Message;
 use crate::client::models::outbound::{PendingResponse, SendError, Request, RequestKey};
@@ -14,11 +14,14 @@ pub struct Dispatcher {
 
 impl Dispatcher {
 
-    pub fn new(tx_connection: mpsc::Sender<Message>, buffer_size: usize, outbound_timeout_sec: u8) -> Self {
+    pub fn new(tx_connection: mpsc::Sender<Message>,
+               sig_reconnect_tx: watch::Sender<()> ,
+               buffer_size: usize,
+               outbound_timeout_sec: u8) -> Self {
         let (tx_connection_change, rx_connection_change) = mpsc::channel(1);
         let (tx_pending_response, rx_pending_response) = mpsc::channel(buffer_size);
         let connection_tx = ConnectionTx { tx: tx_connection };
-        let outbound = Outbound::new(connection_tx, tx_pending_response, rx_connection_change, buffer_size, outbound_timeout_sec);
+        let outbound = Outbound::new(connection_tx, tx_pending_response, rx_connection_change, sig_reconnect_tx, buffer_size, outbound_timeout_sec);
         let inbound = Inbound::new(buffer_size, rx_pending_response);
         Dispatcher { outbound, inbound, tx_connection_change }
     }
@@ -30,6 +33,7 @@ impl Dispatcher {
     }
 }
 
+#[derive(Clone)]
 pub struct ConnectionTx {
     tx: mpsc::Sender<Message>
 }
@@ -40,6 +44,7 @@ impl From<mpsc::Sender<Message>> for ConnectionTx {
     }
 }
 
+#[derive(Clone)]
 pub struct Outbound {
     pub tx: mpsc::Sender<Request>,
 }
@@ -51,16 +56,16 @@ impl From<mpsc::Sender<Request>> for Outbound {
 }
 
 impl Outbound {
-
     fn new(connection_tx: ConnectionTx,
-               tx_pending_response: mpsc::Sender<PendingResponse>,
-               rx_connection_change: mpsc::Receiver<ConnectionTx>,
-               buffer_size: usize,
-               timeout_sec: u8) -> Self {
+           tx_pending_response: mpsc::Sender<PendingResponse>,
+           rx_connection_change: mpsc::Receiver<ConnectionTx>,
+           sig_reconnect_tx: watch::Sender<()>,
+           buffer_size: usize,
+           timeout_sec: u8) -> Self {
 
         let (tx, rx) = mpsc::channel(buffer_size);
 
-        Outbound::handle(connection_tx, tx_pending_response, rx, rx_connection_change, timeout_sec);
+        Outbound::handle(connection_tx, tx_pending_response, rx, rx_connection_change, sig_reconnect_tx, timeout_sec);
         Outbound { tx }
     }
 
@@ -68,15 +73,17 @@ impl Outbound {
               tx_pending_response: mpsc::Sender<PendingResponse>,
               mut rx: mpsc::Receiver<Request>,
               mut rx_connection_change: mpsc::Receiver<ConnectionTx>,
+              sig_reconnect_tx: watch::Sender<()>,
               timeout_sec: u8) {
 
+        //todo: solve request message might be loss and sender might await for the response forever.
         tokio::spawn(async move {
             tokio::select! {
                 _ = async {
                         while let Some(request) = rx.recv().await {
                             let Request { key, message, tx_response } = request;
                             let result = tokio::select! {
-                                result = async { connection_tx.tx.send(message).await} => {
+                                result = async { connection_tx.tx.send(message).await } => {
                                     if let Err(e) = result {
                                         Err(SendError::MessageNotSent(e.to_string()))
                                     } else {
@@ -100,7 +107,8 @@ impl Outbound {
                     } => {},
 
                 Some(new_connection_tx) = rx_connection_change.recv() => {
-                    Outbound::handle(new_connection_tx, tx_pending_response, rx, rx_connection_change, timeout_sec)
+                    sig_reconnect_tx.send(()).unwrap();
+                    Outbound::handle(new_connection_tx, tx_pending_response, rx, rx_connection_change, sig_reconnect_tx, timeout_sec)
                 }
             }
         });
