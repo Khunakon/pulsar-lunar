@@ -1,37 +1,11 @@
 use std::error::Error;
+
 use strum_macros::Display;
-use crate::message::proto::ServerError;
-use crate::stream::errors::TcpSockError;
-use crate::net;
-use std::sync::Arc;
-use crate::client::lookup::errors::LookupError;
-use crate::client::models::outbound;
-use crate::client::models::outbound::SendError;
+
+use crate::net::errors::ConnectionError;
+use crate::net::errors::SendError;
+use crate::discovery::errors::LookupError;
 use crate::message::errors::SerDeError;
-
-#[derive(Display, Debug)]
-pub enum ConnectionError {
-    Disconnected,
-    PulsarError {
-        server_error: Option<ServerError>,
-        message: Option<String>
-    },
-    Unexpected(String),
-    SocketError(TcpSockError),
-    NetOpError(net::NetOpError)
-}
-
-impl Error for ConnectionError {}
-
-impl From<TcpSockError> for ConnectionError {
-    fn from(e: TcpSockError) -> Self { ConnectionError::SocketError(e) }
-}
-
-impl From<net::NetOpError> for ConnectionError {
-    fn from(e: net::NetOpError) -> Self {
-        ConnectionError::NetOpError(e)
-    }
-}
 
 #[derive(Display, Debug)]
 pub enum ProducerError {
@@ -40,7 +14,7 @@ pub enum ProducerError {
     Io(std::io::Error),
     Lookup(LookupError),
     CreationFail(String),
-    ErrorSendRequest(outbound::SendError),
+    ErrorSendRequest(SendError),
     ErrorSendMessage(String),
     CloseFail(String),
     SerDe(SerDeError)
@@ -61,7 +35,7 @@ impl From<LookupError> for ProducerError {
     }
 }
 
-impl From<outbound::SendError> for ProducerError {
+impl From<SendError> for ProducerError {
     fn from(e: SendError) -> Self { ProducerError::ErrorSendRequest(e) }
 }
 
@@ -82,7 +56,7 @@ pub enum ConsumerError {
     Io(std::io::Error),
     Lookup(LookupError),
     SubscribeFail(String),
-    ErrorSendRequest(outbound::SendError),
+    ErrorSendRequest(SendError),
     ErrorSendMessage(String),
     CloseFail(String),
     SerDe(SerDeError)

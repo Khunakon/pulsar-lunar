@@ -1,18 +1,15 @@
+use url::Url;
+
+use crate::discovery::errors::LookupError;
+use crate::discovery::GetLookupRequestParam;
+use crate::discovery::request::utils::validate_lookup_response;
+use crate::discovery::response::*;
 use crate::message::codec::Message;
 use crate::message::errors::server_error;
 use crate::message::proto;
-use crate::message::proto::{CommandPartitionedTopicMetadataResponse, CommandLookupTopicResponse};
-use crate::message::proto::base_command::Type::PartitionedMetadata;
-use crate::client::lookup::response::*;
-use crate::client::lookup::GetLookupRequestParam;
-use crate::client::lookup::errors::LookupError;
+use crate::message::proto::{CommandLookupTopicResponse, CommandPartitionedTopicMetadataResponse};
 use crate::message::proto::command_lookup_topic_response;
 use crate::message::proto::command_partitioned_topic_metadata_response;
-use url::Url;
-use crate::client::lookup::request::utils::validate_lookup_response;
-use crate::client::models::outbound::RequestKey;
-use std::sync::Arc;
-use crate::client::connection;
 
 #[derive(Clone)]
 pub struct GetPartitionTopicMetadata {
@@ -128,7 +125,7 @@ impl GetLookupRequestParam for LookupTopic {
 }
 
 mod utils {
-    use crate::client::lookup::errors::LookupError;
+    use crate::discovery::errors::LookupError;
     use crate::message::errors::server_error;
     use crate::message::proto;
 

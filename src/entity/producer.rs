@@ -1,19 +1,20 @@
-use crate::client::models::general::SerialId;
+use crate::net::models::general::SerialId;
 use crate::message::proto;
 use std::collections::{BTreeMap, VecDeque};
-use crate::client::connection::Connection;
+use crate::net::connection::Connection;
 use std::sync::{Arc, Mutex};
 use tokio::sync::oneshot;
 use tokio::time;
-use crate::client::errors::ProducerError;
-use crate::client::lookup::response::BrokerLoc;
-use crate::client::lookup::{lookup_partitioned_topic, LookupTopic};
-use crate::client::connection;
-use crate::client::producer::request::{CreateProducer, CloseProducer, SendMessage};
+use crate::entity::errors::ProducerError;
+use crate::discovery::response::BrokerLoc;
+use crate::discovery::{lookup_topic, LookupTopic, find_broker_loc};
+use crate::net::connection;
+use crate::entity::producer::request::{CreateProducer, CloseProducer, SendMessage};
 use crate::message::serde::SerializeMessage;
 use crate::message::proto::CommandSendReceipt;
 use crate::message::producer::ProducerMessage;
 use request::Batch;
+use crate::net::models::outbound::RetryReq;
 
 pub async fn create(pool: Arc<connection::Pool>, config: ProducerConfig) -> Result<Producer, ProducerError> {
 
@@ -32,7 +33,7 @@ pub async fn create(pool: Arc<connection::Pool>, config: ProducerConfig) -> Resu
     };
 
     let mut producers =
-        lookup_partitioned_topic(topic.clone(), pool, map)
+        lookup_topic(topic.clone(), pool, map)
             .await.map_err(ProducerError::from)?;
 
     let variant =
@@ -86,7 +87,7 @@ impl TopicProducer {
         };
 
         let connection = pool.get_connection(broker_loc).await.map_err(ProducerError::from)?;
-        let success = connection.send_request_with_default_retry(&request).await?;
+        let success = connection.ask_retry(&request, RetryReq::Default).await?;
 
         let (sig_drop_tx, sig_drop_rx) = oneshot::channel();
 
@@ -116,7 +117,7 @@ impl TopicProducer {
             // An Err is received when the `sig_drop_tx` is dropped. But the producer's reconnect logic
             // might send a drop signal to prevent the closing of this producer.
             if let Err(_) = sig_drop_rx.await {
-                let result = connection.send_request(CloseProducer { producer_id }).await;
+                let result = connection.ask(CloseProducer { producer_id }).await;
                 match result {
                     Ok(_) => log::trace!("Producer is dropped and closed. producer_id: {}", producer_id),
                     Err(e) => log::error!(
@@ -145,11 +146,10 @@ impl TopicProducer {
         };
 
         let response = self.pool.main_connection
-            .send_request_with_default_retry(&lookup_topic)
+            .ask_retry(&lookup_topic, RetryReq::Default)
             .await.map_err(ProducerError::from)?;
 
-        let broker_loc = response
-            .into_broker_loc(self.pool.clone(), self.topic.clone())
+        let broker_loc = find_broker_loc(response, self.pool.clone(), self.topic.clone())
             .await.map_err(ProducerError::from)?;
 
         self.connection = self.pool
@@ -169,7 +169,7 @@ impl TopicProducer {
         };
 
         let _ = self.connection
-            .send_request_with_default_retry(&create_producer)
+            .ask_retry(&create_producer, RetryReq::Default)
             .await.map_err(ProducerError::from)?;
 
         Ok(())
@@ -197,7 +197,7 @@ impl TopicProducer {
                         producer_name: self.name.clone()
                     };
 
-                    let result = self.connection.send_request(request).await;
+                    let result = self.connection.ask(request).await;
 
                     match retry_send {
                         RetrySend::Never => {
@@ -223,7 +223,7 @@ impl TopicProducer {
                 }
 
             }
-            Some(batch) => {
+            Some(_batch) => {
                 //todo: support batched message sending
                 unimplemented!()
             }
@@ -355,12 +355,12 @@ pub enum RetrySend {
 
 
 mod request {
-    use crate::client::connection::GetRequestParam;
+    use crate::net::connection::proto::AskProto;
     use crate::message::codec::{Message, BatchedMessage, Payload};
-    use crate::client::models::outbound::RequestKey;
+    use crate::net::models::outbound::RequestKey;
     use crate::message::proto;
-    use crate::client::errors::ProducerError;
-    use crate::client::producer::ProducerOptions;
+    use crate::entity::errors::ProducerError;
+    use crate::entity::producer::ProducerOptions;
     use std::sync::Arc;
     use std::sync::Mutex;
     use std::collections::VecDeque;
@@ -435,7 +435,7 @@ mod request {
         pub epoch: Option<u64>
     }
 
-    impl GetRequestParam for CreateProducer {
+    impl AskProto for CreateProducer {
         type ReturnedVal = proto::CommandProducerSuccess;
         type Error = ProducerError;
 
@@ -490,7 +490,7 @@ mod request {
         pub producer_id: u64
     }
 
-    impl GetRequestParam for CloseProducer {
+    impl AskProto for CloseProducer {
         type ReturnedVal = proto::CommandSuccess;
         type Error = ProducerError;
 
@@ -535,7 +535,7 @@ mod request {
         pub producer_name: String,
     }
 
-    impl GetRequestParam for SendMessage {
+    impl AskProto for SendMessage {
         type ReturnedVal = CommandSendReceipt;
         type Error = ProducerError;
 
@@ -561,8 +561,8 @@ mod request {
                 command: proto::BaseCommand {
                     type_: proto::base_command::Type::Send as i32,
                     send: Some(proto::CommandSend {
-                        producer_id: producer_id,
-                        sequence_id: sequence_id,
+                        producer_id,
+                        sequence_id,
                         num_messages: num_messages_in_batch.clone(),
                         ..Default::default()
                     }),

@@ -1,20 +1,16 @@
-use pulsar_lunar::client::config::ConnectionConfig;
-use url::Url;
-use pulsar_lunar::stream::socket;
-use tokio::net::TcpStream;
-use tokio_native_tls::TlsStream;
-use pulsar_lunar::client::connection;
-use pulsar_lunar::stream::errors::TcpSockError;
-use pulsar_lunar::client::Dispatcher;
-use pulsar_lunar::client::lookup::GetPartitionTopicMetadata;
-use pulsar_lunar::client;
-use futures::FutureExt;
-use pulsar_lunar::client::producer::{ProducerConfig, RetrySend};
 use std::sync::Arc;
-use pulsar_lunar::message::serde::SerializeMessage;
-use pulsar_lunar::message::producer::Message;
-use pulsar_lunar::message::errors::SerDeError;
+
+use futures::FutureExt;
 use serde::{Deserialize, Serialize};
+use url::Url;
+
+use pulsar_lunar::net::config::ConnectionConfig;
+use pulsar_lunar::net::connection;
+use pulsar_lunar::entity;
+use pulsar_lunar::entity::producer::{ProducerConfig, RetrySend};
+use pulsar_lunar::message::errors::SerDeError;
+use pulsar_lunar::message::producer::Message;
+use pulsar_lunar::message::serde::SerializeMessage;
 
 #[tokio::main]
 async fn main() {
@@ -27,18 +23,15 @@ async fn main() {
                                             0,
                                             5).unwrap();
 
-    let pool = connection::Pool::new(conn_config, |config| {
-        connection::connect(tls_sock,
-                            config,
-                            Dispatcher::new,
-                            10,
-                            5).boxed()
+    let pool = connection::Pool::new(conn_config, |conn_config| {
+        connection::connect_tls(conn_config, 10, 5).boxed()
     }).await.unwrap();
 
     let pool = Arc::new(pool);
 
     let topic = "persistent://global.gravity/test/pulsar-lunar".to_string();
-    let mut producer = client::producer::create(pool, ProducerConfig { topic, ..Default::default() } ).await.unwrap();
+    let mut producer = entity::producer::create(pool, ProducerConfig { topic, ..Default::default() } ).await.unwrap();
+
     let message  = TestMessage { name: "koo".to_string(), color: "green".to_string() };
 
     let receipt = producer.send(message, RetrySend::LimitTo { max_retry_count: 5, back_off_sec: 1 }).await.unwrap();
@@ -48,12 +41,6 @@ async fn main() {
     tokio::spawn(async move {
         tokio::time::sleep(tokio::time::Duration::from_secs(3000)).await;
     }).await;
-}
-
-async fn tls_sock(config: ConnectionConfig) -> Result<TlsStream<TcpStream>, TcpSockError> {
-    let address = config.resolve_address().await.map_err(TcpSockError::from)?;
-    let host_name = config.get_host_name().await.map_err(TcpSockError::from)?;
-    socket::tls(address, host_name, &config.cert_chain).await
 }
 
 #[derive(Serialize, Deserialize)]

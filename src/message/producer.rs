@@ -1,9 +1,8 @@
-use crate::message::codec;
-use crate::message::proto;
-use std::collections::{BTreeMap, HashMap};
-use chrono::Utc;
-use crate::message::proto::CompressionType;
+use std::collections::HashMap;
 use std::io::Write;
+
+use crate::message::proto;
+use crate::message::proto::CompressionType;
 
 // message data that will be sent on a topic
 // generated from the [SerializeMessage] trait or [MessageBuilder]

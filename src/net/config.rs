@@ -1,12 +1,9 @@
-use url::Url;
 use std::net::SocketAddr;
-use tokio::task;
-use crate::stream::errors::TcpSockError::{UnableToResolveHostName, InvalidUrlScheme};
-use crate::stream::errors::TcpSockError;
-use crate::net;
-use crate::stream::PulsarStream;
+
 use native_tls::Certificate;
-use crate::stream::socket;
+use url::Url;
+
+use crate::net;
 use crate::net::NetOpError;
 
 #[derive(Clone)]

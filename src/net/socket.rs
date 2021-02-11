@@ -9,8 +9,8 @@ use tokio_native_tls::TlsStream;
 use tokio_util::codec::Framed;
 
 use crate::message::codec::{Codec, Message};
-use crate::stream::{FlowHandle, PulsarStream, InboundReceiver, OutboundSender};
-use crate::stream::errors::TcpSockError;
+use crate::net::{Term, SocketFlow, In, Out};
+use crate::net::errors::TcpSockError;
 use std::net::SocketAddr;
 
 pub async fn tcp(address: SocketAddr) -> Result<TcpStream, TcpSockError> {
@@ -43,19 +43,19 @@ pub async fn tls(address: SocketAddr, host_name: String,  cert_chain: &[Certific
     Ok(stream)
 }
 
-impl PulsarStream for TlsStream<TcpStream> {
-    fn into_io_flow(self) -> (FlowHandle, InboundReceiver, OutboundSender) {
+impl SocketFlow for TlsStream<TcpStream> {
+    fn ports(self) -> (Term, In, Out) {
         into_protocol_flow(self)
     }
 }
 
-impl PulsarStream for TcpStream {
-    fn into_io_flow(self) -> (FlowHandle, InboundReceiver, OutboundSender) {
+impl SocketFlow for TcpStream {
+    fn ports(self) -> (Term, In, Out) {
         into_protocol_flow(self)
     }
 }
 
-fn into_protocol_flow<S>(stream: S) -> (FlowHandle, InboundReceiver, OutboundSender)
+fn into_protocol_flow<S>(stream: S) -> (Term, In, Out)
     where
         S: AsyncRead + AsyncWrite,
         S: Sized + Send + Unpin + 'static
@@ -121,6 +121,6 @@ fn into_protocol_flow<S>(stream: S) -> (FlowHandle, InboundReceiver, OutboundSen
         let _ = sink.close().await; //ignore any other error.
     });
 
-    (FlowHandle { tx_sigterm }, InboundReceiver { rx: rx_inbound }, OutboundSender { tx: tx_outbound } )
+    (Term { tx_sigterm }, In { rx: rx_inbound }, Out { tx: tx_outbound } )
 
 }

@@ -49,8 +49,6 @@ impl From<prost::DecodeError> for FramingError {
 }
 
 use crate::message::proto::ServerError;
-use nom::lib::std::fmt::Formatter;
-use crate::message::serde::SerializeMessage;
 
 pub(crate) fn server_error(i: i32) -> Option<ServerError> {
    match i {

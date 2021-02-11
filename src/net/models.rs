@@ -3,25 +3,18 @@ pub mod outbound {
     use crate::message::codec::Message;
     use crate::message::proto::*;
     use tokio::sync::oneshot;
-    use std::error::Error;
     use std::convert::TryFrom;
     use strum_macros::Display;
-
-    #[derive(Debug, Display)]
-    pub enum SendError {
-        SendTimeout(RequestKey),
-        MessageNotSent(String),
-        Unexpected(String)
-    }
-
-    impl Error for SendError {}
+    use tokio::sync::mpsc;
+    use crate::net::errors::SendError;
+    use futures::Future;
 
     #[derive(Debug, Display, Clone, PartialEq, Ord, PartialOrd, Eq)]
     pub enum RequestKey {
         AutoIncrRequestId,
         RequestId(u64),
         ProducerSend { producer_id: u64, sequence_id: u64 },
-        Consumer { id: u64 },
+        Consumer { consumer_id: u64 },
     }
 
     impl RequestKey {
@@ -61,7 +54,7 @@ pub mod outbound {
                 BaseCommand { redeliver_unacknowledged_messages: Some(CommandRedeliverUnacknowledgedMessages { consumer_id, .. }), .. } |
                 BaseCommand { reached_end_of_topic: Some(CommandReachedEndOfTopic { consumer_id }), .. } |
                 BaseCommand { ack: Some(CommandAck { consumer_id, .. }), .. } => {
-                    Some(RequestKey::Consumer { id: consumer_id })
+                    Some(RequestKey::Consumer { consumer_id: consumer_id })
                 },
                 _ => {
                     match base_command::Type::try_from(message.command.type_ ) {
@@ -78,10 +71,49 @@ pub mod outbound {
         }
     }
 
-    pub struct Request {
-        pub key: RequestKey,
-        pub message: Message,
-        pub tx_response: oneshot::Sender<Result<Message, SendError>>
+    pub enum RetryReq {
+        Default,
+        LimitTo { max: u16, back_off_sec: u64 },
+        Forever,
+    }
+
+    pub enum Request {
+        Ask {
+            key: RequestKey,
+            message: Message,
+            tx_response: oneshot::Sender<Result<Message, SendError>>
+        },
+        Tell {
+            key: RequestKey,
+            message: Message,
+            tx_response: oneshot::Sender<Result<(), SendError>>
+        }
+    }
+
+    impl Request {
+        pub async fn get_response_via<'a, F, Fut>(self, sender: F )
+            where
+                F: FnOnce(RequestKey, Message) -> Fut + 'a,
+                Fut: Future<Output = Result<(RequestKey, &'a mpsc::Sender<PendingResponse>), SendError>>
+        {
+            match self {
+                Self::Ask { key, message, tx_response } => {
+                    match sender(key, message).await {
+                        Ok((request_key, register_pending_resp_tx)) => {
+                            let pending_response = PendingResponse { request_key, tx_response };
+                            if let Err(e) = register_pending_resp_tx.send(pending_response).await {
+                                panic!(SendError::Unexpected(e.to_string()));
+                            }
+                        }
+                        Err(e) => { tx_response.send(Err(e)).unwrap(); }
+                    }
+                }
+                Self::Tell { key, message, tx_response } => {
+                    let result = sender(key, message).await;
+                    let _ = tx_response.send(result.map(|_|()));
+                }
+            };
+        }
     }
 
     pub struct PendingResponse {

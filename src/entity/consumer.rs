@@ -1,14 +1,14 @@
 use crate::message::serde::DeserializeMessage;
-use crate::client::connection::Connection;
+use crate::net::connection::Connection;
 use std::sync::Arc;
 use chrono::{DateTime, Utc};
 use crate::message::proto::command_subscribe;
 use crate::message::proto;
 use tokio::time::Duration;
 use std::collections::BTreeMap;
-use crate::client::connection;
-use crate::client::errors::ConsumerError;
-use crate::client::lookup::response::BrokerLoc;
+use crate::net::connection;
+use crate::entity::errors::ConsumerError;
+use crate::discovery::response::BrokerLoc;
 use tokio::sync::mpsc;
 
 pub struct TopicConsumer<M: DeserializeMessage> {
@@ -79,12 +79,12 @@ pub struct DeadLetterPolicy {
 mod request {
     use crate::message::proto::{command_subscribe, CommandSuccess};
     use crate::message::proto;
-    use crate::client::consumer::ConsumerOptions;
-    use crate::client::connection::GetRequestParam;
+    use crate::entity::consumer::ConsumerOptions;
+    use crate::net::connection::proto::AskProto;
     use crate::message::codec::Message;
-    use crate::client::models::outbound::RequestKey;
+    use crate::net::models::outbound::RequestKey;
     use std::sync::Arc;
-    use crate::client::errors::ConsumerError;
+    use crate::entity::errors::ConsumerError;
 
     #[derive(Clone, Debug)]
     pub struct Subscribe {
@@ -96,12 +96,12 @@ mod request {
         options: Arc<ConsumerOptions>,
     }
 
-    impl GetRequestParam for Subscribe {
+    impl AskProto for Subscribe {
         type ReturnedVal = CommandSuccess;
         type Error = ConsumerError;
 
         fn get_request_key(&self) -> RequestKey {
-            RequestKey::Consumer { id: self.consumer_id }
+            RequestKey::Consumer { consumer_id: self.consumer_id }
         }
 
         fn into_message(self, request_id: u64) -> Message {
@@ -147,7 +147,7 @@ mod request {
         fn map(response: Message) -> Result<Self::ReturnedVal, Self::Error> {
             match response.command.success {
                 Some(success) => Ok(success),
-                None => Err(ConsumerError::SubscribeFail("Unexecpted none response".to_string()))
+                None => Err(ConsumerError::SubscribeFail("Unexpected none response".to_string()))
             }
         }
 
