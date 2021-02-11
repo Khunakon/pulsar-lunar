@@ -4,8 +4,8 @@ use futures::FutureExt;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use pulsar_lunar::net::config::ConnectionConfig;
-use pulsar_lunar::net::connection;
+use pulsar_lunar::netflow::config::ConnectionConfig;
+use pulsar_lunar::netflow::connection;
 use pulsar_lunar::entity;
 use pulsar_lunar::entity::producer::{ProducerConfig, RetrySend};
 use pulsar_lunar::message::errors::SerDeError;

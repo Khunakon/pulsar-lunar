@@ -1,8 +1,8 @@
 use tokio::sync::{mpsc, oneshot, Mutex, watch};
 use tokio::time;
 use crate::message::codec::Message;
-use crate::net::errors::SendError;
-use crate::net::models::outbound::{PendingResponse, Request, RequestKey};
+use crate::netflow::errors::SendError;
+use crate::netflow::models::outbound::{PendingResponse, Request, RequestKey};
 use nom::lib::std::collections::BTreeMap;
 use std::sync::Arc;
 

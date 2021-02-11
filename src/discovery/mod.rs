@@ -3,9 +3,9 @@ use std::sync::Arc;
 use futures::Future;
 use tokio::sync::mpsc;
 
-use crate::net::connection::{proto::AskProto};
-use crate::net::connection;
-use crate::net::models::outbound::{RequestKey, RetryReq};
+use crate::netflow::connection::{proto::AskProto};
+use crate::netflow::connection;
+use crate::netflow::models::outbound::{RequestKey, RetryReq};
 use crate::discovery::errors::LookupError;
 pub use crate::discovery::request::GetPartitionTopicMetadata;
 pub use crate::discovery::request::LookupTopic;

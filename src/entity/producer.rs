@@ -1,20 +1,20 @@
-use crate::net::models::general::SerialId;
+use crate::netflow::models::general::SerialId;
 use crate::message::proto;
 use std::collections::{BTreeMap, VecDeque};
-use crate::net::connection::Connection;
+use crate::netflow::connection::Connection;
 use std::sync::{Arc, Mutex};
 use tokio::sync::oneshot;
 use tokio::time;
 use crate::entity::errors::ProducerError;
 use crate::discovery::response::BrokerLoc;
 use crate::discovery::{lookup_topic, LookupTopic, find_broker_loc};
-use crate::net::connection;
+use crate::netflow::connection;
 use crate::entity::producer::request::{CreateProducer, CloseProducer, SendMessage};
 use crate::message::serde::SerializeMessage;
 use crate::message::proto::CommandSendReceipt;
 use crate::message::producer::ProducerMessage;
 use request::Batch;
-use crate::net::models::outbound::RetryReq;
+use crate::netflow::models::outbound::RetryReq;
 
 pub async fn create(pool: Arc<connection::Pool>, config: ProducerConfig) -> Result<Producer, ProducerError> {
 
@@ -355,9 +355,9 @@ pub enum RetrySend {
 
 
 mod request {
-    use crate::net::connection::proto::AskProto;
+    use crate::netflow::connection::proto::AskProto;
     use crate::message::codec::{Message, BatchedMessage, Payload};
-    use crate::net::models::outbound::RequestKey;
+    use crate::netflow::models::outbound::RequestKey;
     use crate::message::proto;
     use crate::entity::errors::ProducerError;
     use crate::entity::producer::ProducerOptions;

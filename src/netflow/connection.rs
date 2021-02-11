@@ -12,13 +12,13 @@ use tokio::time;
 use model::*;
 use proto::*;
 
-use crate::net::config::ConnectionConfig;
-use crate::net::dispatcher;
-use crate::net::dispatcher::DispatcherConfig;
-use crate::net::errors::{ConnectionError, SendError};
-use crate::net::models::general::SerialId;
-use crate::net::models::outbound::{Request, RequestKey, RetryReq};
-use crate::net::SocketFlow;
+use crate::netflow::config::ConnectionConfig;
+use crate::netflow::dispatcher;
+use crate::netflow::dispatcher::DispatcherConfig;
+use crate::netflow::errors::{ConnectionError, SendError};
+use crate::netflow::models::general::SerialId;
+use crate::netflow::models::outbound::{Request, RequestKey, RetryReq};
+use crate::netflow::SocketFlow;
 use crate::discovery::response::BrokerLoc;
 use crate::entity::Dispatcher;
 use crate::message::codec::Message;
@@ -286,7 +286,7 @@ impl Pool {
 }
 
 pub mod proto {
-    use crate::net::models::outbound::RequestKey;
+    use crate::netflow::models::outbound::RequestKey;
     use crate::message::codec::Message;
 
     pub trait TellProto {
@@ -372,13 +372,13 @@ mod engine {
     use tokio::time;
     use tokio_native_tls::TlsStream;
 
-    use crate::net::{dispatcher, SocketFlow, Term};
-    use crate::net::config::ConnectionConfig;
-    use crate::net::connection::message_utils;
-    use crate::net::connection::model::IsCurrentDispatcher;
-    use crate::net::errors::ConnectionError;
-    use crate::net::errors::TcpSockError;
-    use crate::net::socket;
+    use crate::netflow::{dispatcher, SocketFlow, Term};
+    use crate::netflow::config::ConnectionConfig;
+    use crate::netflow::connection::message_utils;
+    use crate::netflow::connection::model::IsCurrentDispatcher;
+    use crate::netflow::errors::ConnectionError;
+    use crate::netflow::errors::TcpSockError;
+    use crate::netflow::socket;
     use crate::entity::Dispatcher;
     use crate::message::codec::Message;
     use crate::message::proto;
@@ -568,7 +568,7 @@ mod model {
 
     use tokio::sync::watch;
 
-    use crate::net::connection::Connection;
+    use crate::netflow::connection::Connection;
     use crate::entity::Dispatcher;
 
     #[derive(Clone)]
@@ -584,7 +584,7 @@ mod model {
 }
 
 mod message_utils {
-    use crate::net::errors::ConnectionError;
+    use crate::netflow::errors::ConnectionError;
     use crate::message::codec::Message;
     use crate::message::errors::server_error;
     use crate::message::proto;

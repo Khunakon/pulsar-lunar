@@ -9,8 +9,8 @@ use tokio_native_tls::TlsStream;
 use tokio_util::codec::Framed;
 
 use crate::message::codec::{Codec, Message};
-use crate::net::{Term, SocketFlow, In, Out};
-use crate::net::errors::TcpSockError;
+use crate::netflow::{Term, SocketFlow, In, Out};
+use crate::netflow::errors::TcpSockError;
 use std::net::SocketAddr;
 
 pub async fn tcp(address: SocketAddr) -> Result<TcpStream, TcpSockError> {

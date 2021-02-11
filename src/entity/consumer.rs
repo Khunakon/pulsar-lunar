@@ -1,12 +1,12 @@
 use crate::message::serde::DeserializeMessage;
-use crate::net::connection::Connection;
+use crate::netflow::connection::Connection;
 use std::sync::Arc;
 use chrono::{DateTime, Utc};
 use crate::message::proto::command_subscribe;
 use crate::message::proto;
 use tokio::time::Duration;
 use std::collections::BTreeMap;
-use crate::net::connection;
+use crate::netflow::connection;
 use crate::entity::errors::ConsumerError;
 use crate::discovery::response::BrokerLoc;
 use tokio::sync::mpsc;
@@ -80,9 +80,9 @@ mod request {
     use crate::message::proto::{command_subscribe, CommandSuccess};
     use crate::message::proto;
     use crate::entity::consumer::ConsumerOptions;
-    use crate::net::connection::proto::AskProto;
+    use crate::netflow::connection::proto::AskProto;
     use crate::message::codec::Message;
-    use crate::net::models::outbound::RequestKey;
+    use crate::netflow::models::outbound::RequestKey;
     use std::sync::Arc;
     use crate::entity::errors::ConsumerError;
 

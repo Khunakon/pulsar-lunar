@@ -1,5 +1,5 @@
-pub use crate::net::connection::connect;
-pub use crate::net::dispatcher::Dispatcher;
+pub use crate::netflow::connection::connect;
+pub use crate::netflow::dispatcher::Dispatcher;
 
 pub mod errors;
 pub mod producer;

@@ -1,5 +1,5 @@
 use strum_macros::Display;
-use crate::net::errors::{SendError, ConnectionError};
+use crate::netflow::errors::{SendError, ConnectionError};
 use crate::message::proto;
 use crate::message::validation::ValidationError;
 use url::ParseError;

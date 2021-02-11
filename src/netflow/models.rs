@@ -6,7 +6,7 @@ pub mod outbound {
     use std::convert::TryFrom;
     use strum_macros::Display;
     use tokio::sync::mpsc;
-    use crate::net::errors::SendError;
+    use crate::netflow::errors::SendError;
     use futures::Future;
 
     #[derive(Debug, Display, Clone, PartialEq, Ord, PartialOrd, Eq)]

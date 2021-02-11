@@ -2,8 +2,8 @@ use std::error::Error;
 
 use strum_macros::Display;
 
-use crate::net::errors::ConnectionError;
-use crate::net::errors::SendError;
+use crate::netflow::errors::ConnectionError;
+use crate::netflow::errors::SendError;
 use crate::discovery::errors::LookupError;
 use crate::message::errors::SerDeError;
 

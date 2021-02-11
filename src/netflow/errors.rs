@@ -1,9 +1,9 @@
 use std::error::Error;
 use strum_macros::Display;
 use crate::net::NetOpError;
-use crate::net::errors::TcpSockError::TlsError;
+use crate::netflow::errors::TcpSockError::TlsError;
 use crate::message::proto::ServerError;
-use crate::net::models::outbound::RequestKey;
+use crate::netflow::models::outbound::RequestKey;
 
 #[derive(Clone, Debug, Display)]
 pub enum TcpSockError {
